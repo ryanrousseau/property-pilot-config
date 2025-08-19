@@ -1,0 +1,43 @@
+variable "Project.CleanedEnvironmentName" {
+    value "#{Octopus.Environment.Name | Replace \"[^a-zA-Z]+\" \"-\" | ToLower}" {}
+}
+
+variable "Project.CleanedProjectName" {
+    value "#{Octopus.Project.Name | Replace \"[^a-zA-Z]+\" \"-\" | ToLower}" {}
+}
+
+variable "Project.CleanedSpaceName" {
+    value "#{Octopus.Space.Name | Replace \"[^a-zA-Z]+\" \"-\" | ToLower}" {}
+}
+
+variable "Project.Cluster.Namespace" {
+    value "#{Project.CleanedSpaceName}-#{Project.CleanedProjectName}-#{Project.CleanedEnvironmentName}" {}
+}
+
+variable "Project.Container.Image" {
+    value "#{Octopus.Action.Package[app-container].Image}" {}
+}
+
+variable "Project.Deployment.Name" {
+    value "propertypilot-frontend-deployment" {}
+}
+
+variable "Project.Deployment.Replicas" {
+    value "1" {}
+
+    value "2" {
+        environment = ["production"]
+    }
+}
+
+variable "Project.Labels.Component" {
+    value "frontend" {}
+}
+
+variable "Project.Service.Port" {
+    value "8080" {}
+}
+
+variable "Project.Service.PortName" {
+    value "http" {}
+}

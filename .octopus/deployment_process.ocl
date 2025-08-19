@@ -1,0 +1,92 @@
+step "create-namespace" {
+    name = "Create namespace"
+    properties = {
+        Octopus.Action.TargetRoles = "demo-k8s-cluster"
+    }
+
+    action {
+        action_type = "Octopus.KubernetesRunScript"
+        properties = {
+            Octopus.Action.Script.ScriptBody = <<-EOT
+                # Set varaibles
+                $clusterNamespace = $OctopusParameters["Project.Cluster.Namespace"]
+                
+                # Get existing namespaces
+                Write-Host "Retrieving namespaces ..."
+                $namespaces = (kubectl get namespaces -o JSON | ConvertFrom-Json)
+                
+                # Check to see if namespace exists
+                if ($null -eq ($namespaces.Items | Where-Object {$_.metadata.name -eq $clusterNamespace}))
+                {
+                	# Create the namespace
+                    Write-Host "Namespace $clusetrNamespace doesn't exist, creating ..."
+                    kubectl create namespace $clusterNamespace
+                }
+                else
+                {
+                	Write-Host "Namespace $clusterNamespace already exists, moving on ..."
+                }
+                EOT
+            Octopus.Action.Script.ScriptSource = "Inline"
+            Octopus.Action.Script.Syntax = "PowerShell"
+        }
+        worker_pool = "hosted-windows"
+        worker_pool_variable = ""
+    }
+}
+
+step "deploy-manifest" {
+    name = "Deploy manifest"
+    properties = {
+        Octopus.Action.TargetRoles = "demo-k8s-cluster"
+    }
+
+    action {
+        action_type = "Octopus.KubernetesDeployRawYaml"
+        properties = {
+            Octopus.Action.Kubernetes.DeploymentTimeout = "180"
+            Octopus.Action.Kubernetes.ResourceStatusCheck = "True"
+            Octopus.Action.Kubernetes.ServerSideApply.Enabled = "True"
+            Octopus.Action.Kubernetes.ServerSideApply.ForceConflicts = "True"
+            Octopus.Action.KubernetesContainers.CustomResourceYaml = <<-EOT
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: #{Project.Deployment.Name}
+                spec:
+                  replicas: #{Project.Deployment.Replicas}
+                  selector:
+                    matchLabels:
+                      component: #{Project.Labels.Component}
+                      type: main
+                  template:
+                    metadata:
+                      labels:
+                        component: #{Project.Labels.Component}
+                        type: main
+                    spec:
+                      containers:
+                        - name: #{Project.Labels.Component}
+                          image: #{Octopus.Action.Package[app-container].Image}
+                          ports:
+                            - containerPort: #{Project.Service.Port}
+                              name: #{Project.Service.PortName}
+                EOT
+            Octopus.Action.KubernetesContainers.Namespace = "#{Project.Cluster.Namespace}"
+            Octopus.Action.Script.ScriptSource = "Inline"
+        }
+        worker_pool = "hosted-windows"
+        worker_pool_variable = ""
+
+        packages "app-container" {
+            acquisition_location = "NotAcquired"
+            feed = "docker-hub"
+            package_id = "octopussolutionsengineering/demoapp-prime"
+            properties = {
+                Extract = "False"
+                Purpose = "DockerImageReference"
+                SelectionMode = "immediate"
+            }
+        }
+    }
+}
