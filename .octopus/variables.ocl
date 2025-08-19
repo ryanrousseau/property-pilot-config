@@ -25,7 +25,7 @@ variable "Project.Deployment.Name" {
 variable "Project.Deployment.Replicas" {
     value "1" {}
 
-    value "2" {
+    value "3" {
         environment = ["production"]
     }
 }
