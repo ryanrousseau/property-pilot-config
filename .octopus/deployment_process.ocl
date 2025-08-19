@@ -44,6 +44,8 @@ step "deploy-manifest" {
     action {
         action_type = "Octopus.KubernetesDeployRawYaml"
         properties = {
+            Octopus.Action.GitRepository.FilePathFilters = "deployment.yaml"
+            Octopus.Action.GitRepository.Source = "Project"
             Octopus.Action.Kubernetes.DeploymentTimeout = "180"
             Octopus.Action.Kubernetes.ResourceStatusCheck = "True"
             Octopus.Action.Kubernetes.ServerSideApply.Enabled = "True"
@@ -72,8 +74,9 @@ step "deploy-manifest" {
                             - containerPort: #{Project.Service.Port}
                               name: #{Project.Service.PortName}
                 EOT
+            Octopus.Action.KubernetesContainers.CustomResourceYamlFileName = "deployment.yaml"
             Octopus.Action.KubernetesContainers.Namespace = "#{Project.Cluster.Namespace}"
-            Octopus.Action.Script.ScriptSource = "Inline"
+            Octopus.Action.Script.ScriptSource = "GitRepository"
         }
         worker_pool = "hosted-windows"
         worker_pool_variable = ""
